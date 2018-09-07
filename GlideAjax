@@ -1,0 +1,52 @@
+#########################################################################################################
+                                   Client Script(Client Include)
+#########################################################################################################
+
+function onLoad() {
+	
+  var userid = g_user.userID;
+  var ga = new GlideAjax('PSGetLocations');
+	ga.addParam('sysparm_name','PSGetLocations');	
+	ga.addParam('sysparm_userid',userid);
+	ga.getXML(Locations);
+}
+
+function Locations(response){
+ 	var result = (response.responseXML.documentElement.getAttribute("answer"));
+	var choices = result.split(",");
+	
+	//g_form.addOption('u_location','','--None--');
+	for (var i=0; i<choices.length; i++){
+		if(choices[i]){
+			g_form.addOption('u_location',choices[i],choices[i]);
+		}
+	}
+}
+
+#########################################################################################################
+                                   Server Script(Script Include)
+#########################################################################################################
+
+var PSGetLocations = Class.create();
+PSGetLocations.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+PSGetLocations : function(){
+
+	var userid = this.getParameter('sysparm_userid');
+	var locations = [];
+	
+	var user = new GlideRecord('sys_user');
+	user.addQuery('sys_id',userid);
+	user.query();
+	if(user.next()){
+		var x = user.company;
+		var loc = new GlideRecord('cmn_location');
+		loc.addQuery('company',x);
+		loc.query();
+		while(loc.next()){
+			locations += loc.name+",";
+		}
+	} 
+	return locations;
+},
+	type: 'PSGetLocations'
+});
