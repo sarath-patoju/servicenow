@@ -1,0 +1,19 @@
+#########################################################################################################
+                                   Regex Validation - IP Address
+#########################################################################################################
+function validIP(target) {
+    if (!target)
+        return false;
+
+    // Only matches IPV4 dot decimal notation 255.255.255.255
+    var regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    return target.match(regex) != null;
+}
+
+
+target = target.replace(/'/g, "\\'");
+
+if (!validIP(target)) {
+    notificationMessage("Please enter a valid IP address");
+    return;
+}
