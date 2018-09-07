@@ -1,0 +1,107 @@
+#########################################################################################################
+                                   Client Script(Client Script)
+#########################################################################################################
+
+function onChange(control, oldValue, newValue, isLoading, isTemplate) {
+    if (isLoading || newValue == '') {
+        return;
+    }
+
+    //Type appropriate comment here, and begin script below
+    var sc = g_form.getValue('search_criteria');
+
+    if (sc == "all_users") {
+        var dialog = new GlideDialogWindow();
+        dialog.setTitle('Please Wait while users are fetched...');
+        var ga = new GlideAjax('Search_adduser_SI');
+        ga.addParam('sysparm_name', 'myfunction');
+        ga.addParam('sysparm_search', sc);
+        ga.getXML(HelloWorldParse);
+        //alert("hello");
+
+        function HelloWorldParse(response) {
+            var answer = response.responseXML.documentElement.getAttribute("answer");
+            var outputval = answer;
+            var temp = outputval.split(",");
+            g_form.setValue('fetched_users', temp);
+            var dia = new GlideDialogWindow("Select_Users_SI");
+            dia.setTitle("Loading.."); //Set the dialog title
+            //dialog.setSize(960,960);
+            dia.render(); //Open the dialog
+            dialog.destroy();
+        }
+    } else if (sc == "group") {
+        var dialog = new GlideDialogWindow();
+        dialog.setTitle('Please Wait while groups are fetched...');
+        var ga = new GlideAjax('Search_adduser_SI');
+        ga.addParam('sysparm_name', 'myfunction');
+        ga.addParam('sysparm_search', sc);
+        ga.getXML(HelloWorldParse);
+        //alert("hello");
+
+        function HelloWorldParse(response) {
+            var answer = response.responseXML.documentElement.getAttribute("answer");
+            var outputval = answer;
+            var temp = outputval.split(",");
+            g_form.clearValue('group_select');
+            var temp_length = temp.length;
+            g_form.clearOptions('group_select');
+            g_form.addOption('group_select', "", "--None--", 0);
+            for (i = 0; i < temp.length; i++) {
+                if (temp[i]) {
+                    g_form.addOption('group_select', temp[i], temp[i], i + 1);
+                }
+            }
+            dialog.destroy();
+        }
+    } else {
+        var dialog = new GlideDialogWindow();
+        dialog.setTitle('Please Wait while OUs are fetched...');
+        var ga = new GlideAjax('Search_adduser_SI');
+        ga.addParam('sysparm_name', 'myfunction');
+        ga.addParam('sysparm_search', sc);
+        ga.getXML(HelloWorldParse);
+        //alert("hello");
+
+        function HelloWorldParse(response) {
+            var answer = response.responseXML.documentElement.getAttribute("answer");
+            var outputval = answer;
+            var temp = outputval.split(",");
+            g_form.clearValue('select_ou');
+            var temp_length = temp.length;
+            g_form.clearOptions('select_ou');
+            g_form.addOption('select_ou', "", "--None--", 0);
+            for (i = 0; i < temp.length; i++) {
+                if (temp[i]) {
+                    g_form.addOption('select_ou', temp[i], temp[i], i + 1);
+                }
+            }
+            dialog.destroy();
+        }
+    }
+}
+
+#########################################################################################################
+                                   Server Script(Script Include)
+#########################################################################################################
+
+var Search_adduser_SI = Class.create();
+Search_adduser_SI.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+    myfunction: function() {
+        var gr = new GlideRecord('x_temal_add_users_search_criteria_sf');
+        gr.initialize();
+        var un = this.getParameter('sysparm_search');
+        gr.search = un;
+        gr.description = 'start';
+        keyval = gr.insert();
+        output = gr.description;
+        while (output == 'start') {
+            var gr1 = new GlideRecord('x_temal_add_users_search_criteria_sf');
+            gr1.initialize();
+            gr1.get(keyval);
+            output = gr1.description;
+        }
+        return output;
+    },
+    type: 'Search_adduser_SI'
+});
