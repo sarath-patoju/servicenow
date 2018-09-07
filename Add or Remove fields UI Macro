@@ -1,0 +1,62 @@
+#########################################################################################################
+                                            Add UI Macro
+#########################################################################################################
+
+<?xml version="1.0" encoding="utf-8" ?>
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+<g:evaluate var="jvar_guid" expression="gs.generateGUID(this);" />
+<j:set var="jvar_n" value="display_icon_${jvar_guid}:${ref}"/>
+<a id="${jvar_n}" onclick="AddIt()">
+
+<img src="Plus.png" width="32" height="32" />
+</a>
+<script>
+function AddIt()
+{ 
+  var cnt = g_form.getValue('commandcount').split(':');
+  for(var i=0; i ${AMP}lt; cnt.length; i++)
+  {
+    if(cnt[i] != '0')
+    {
+      var fieldName = 'command_' + cnt[i];
+      g_form.setDisplay(fieldName,true);
+      g_form.setMandatory(fieldName,true);
+      g_form.clearValue(fieldName);
+
+      cnt[i] = '0';
+      var fieldData = cnt.join(":");
+      g_form.setValue('commandcount',fieldData);
+      break;
+    }
+  }
+}
+</script> 
+</j:jelly>
+
+
+#########################################################################################################
+                                            Remove UI Macro
+#########################################################################################################
+
+<?xml version="1.0" encoding="utf-8" ?>
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+<g:evaluate var="jvar_guid" expression="gs.generateGUID(this);" />
+<j:set var="jvar_n" value="display_icon_${jvar_guid}:${ref}"/>
+<a id="${jvar_n}" onclick="RemoveSecond()">
+
+<img src="Remove.png" width="32" height="32" />
+</a>
+<script>
+function RemoveSecond()
+{ 
+  g_form.setMandatory('command_2',false);
+  g_form.setDisplay('command_2',false);
+  g_form.clearValue('command_2');
+
+  var cnt = g_form.getValue('commandcount').split(':');
+  cnt[1] = '2';
+  var fieldData = cnt.join(":");
+  g_form.setValue('commandcount',fieldData);
+}
+</script> 
+</j:jelly>
