@@ -1,0 +1,8 @@
+var choices = result.split(",");
+	
+//g_form.addOption('u_location','','--None--');
+for (var i=0; i<choices.length; i++){
+  if(choices[i]){
+			g_form.addOption('u_location',choices[i],choices[i]);
+	}
+}
