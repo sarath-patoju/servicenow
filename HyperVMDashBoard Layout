@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<j:jelly trim="true" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+<script>
+ 
+var requestBody = ""; 
+
+var client=new XMLHttpRequest();
+client.open("get","https://techmnonprod2.service-now.com/api/now/table/x_temal_hypervvmda_hypervvmdashboard_report?sysparm_fields=vmcpu%2Cvmuptime%2Cvmname%2Cvmopt%2Cvmstate%2Cvmram");
+
+client.setRequestHeader('Accept','application/json');
+client.setRequestHeader('Content-Type','application/json');
+
+//Eg. UserName="admin", Password="admin" for this code sample.
+client.setRequestHeader('Authorization', 'Basic '+btoa('sarat.satya'+':'+'pass,123'));
+
+client.onreadystatechange = function() { 
+	if(this.readyState = this.DONE) {
+		document.getElementById("response").innerHTML=this.response;  
+	var x = document.getElementById('response');
+	x.style.display = 'none';
+	var response_data = JSON.parse(this.response);
+	var vms_count = response_data.result.length;
+	var vms = new Array();
+	vms.push(["Status", "RAM", "CPU", "Uptime", "State", "Name"]);
+	for (var x = vms_count; x >0; x--) {
+		vms.push([response_data.result[x-1].vmopt, response_data.result[x-1].vmram, response_data.result[x-1].vmcpu, response_data.result[x-1].vmuptime, response_data.result[x-1].vmstate,response_data.result[x-1].vmname]);
+	}
+	//alert(response_data.result[0].vmname);
+	
+	//Create a HTML Table element.
+    var table = document.createElement("table");
+    table.border = "1";
+ 
+    //Get the count of columns.
+    var columnCount = vms[0].length;
+ 
+    //Add the header row.
+    var row = table.insertRow(-1);
+	
+    for (var i = columnCount; i > 0 ; i--) {
+        var headerCell = document.createElement("th");
+        headerCell.innerHTML = vms[0][i-1];
+        row.appendChild(headerCell);
+    }
+ 
+    //Add the data rows.
+    for (var i = vms.length; i > 1 ; i--) {
+        row = table.insertRow(-1);
+        for (var j = columnCount; j > 0 ; j--) {
+            var cell = row.insertCell(-1);
+            cell.innerHTML = vms[i-1][j-1];
+        }
+    }
+ 
+    var dvTable = document.getElementById("dvTable");
+    dvTable.innerHTML = "";
+    dvTable.appendChild(table);
+/////////////////////////////////////////////////////////////////////////////
+	var runn = new Array();
+	var stopp = new Array();
+	for (var y = vms_count; y >0; y--) {
+		if(response_data.result[y-1].vmstate == "Running"){
+			runn.push([response_data.result[y-1].vmname]);
+		}
+		else if(response_data.result[y-1].vmstate == "Off"){
+			stopp.push([response_data.result[y-1].vmname]);
+		}
+	}
+
+	document.getElementById("Total").innerHTML = vms_count;
+	document.getElementById("Running").innerHTML = runn.length;
+	document.getElementById("Stopped").innerHTML = stopp.length;
+//////////////////////////////////////////////////////////////////////////////	
+}}; 
+client.send(requestBody);	
+
+</script>
+	<!-- ******************************
+			TOP BAR CONTENT & NOTIFICATIONS
+			******************************* -->
+			<!--header start-->
+			<header class="header black-bg">
+
+				<img style="margin-left:10px; margin-top:10px; height: 70px; width:160px; float: left;" src="Hyper-V.png" alt="HyperV Logo" width="1552" height="429" />	
+				<a href="/index.do" class="logo" float="right">
+					<b style="font-size: 40px;  color: #B6B6B4;">I</b>nstance
+					<b style="font-size: 40px;  color: #B6B6B4;">D</b>ashboard
+					
+				</a>
+	</header>
+				<!--logo end-->
+
+	<div align="center" class="cms_layout_outer_container_1_column">
+<div align="center" class="cms_layout_container_1_column">
+
+	<table id="${jvar_name}" class="cms_layout_table_1_column" border="0" cellspacing="0" cellpadding="0" width="100%" height="100%">
+		<tr>
+			<td id="dropzone0" dropzone="true" class="cms_layout_content_header" colspan="3" valign="top" height="8%"/>
+		</tr>
+		</table>
+	<body data-spy="scroll" data-target=".scrollspy">
+    <div class="container-fluid ">
+      <div class="row">
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2">
+          
+          <div class="row placeholders" >
+            <div class="col-xs-6 col-sm-3 placeholder"><img src="HyperV_Blue.jpg"><p class="sarath" id="Total"></p></img>
+              <h4>Total Instances</h4><span class="text-muted"> </span>
+            </div>
+            <div class="col-xs-6 col-sm-3 placeholder"><img src="HyperV_Green.jpg"><p class="sarath" id="Running"></p></img>
+              <h4>Running</h4><span class="text-muted"> </span>
+            </div>
+            <div class="col-xs-6 col-sm-3 placeholder"><img src="HyperV_Red.jpg"><p class="sarath" id="Stopped"></p></img>
+              <h4>Stopped</h4><span class="text-muted"> </span>
+            </div>
+			  <div class="col-xs-6 col-sm-3 placeholder"><img src="HyperV_Gray.jpg"><p class="sarath1" id="Running">192.168.51.6<br>BE2BL11-HyperV</br></p></img>
+              <h4>Server Details</h4><span class="text-muted"> </span>
+            </div>
+            
+          </div>
+          <h2 class="sub-header">Instances Overview</h2>
+			
+			<div class="datagrid "><table id="dvTable"></table></div>
+			
+        </div>
+      </div>
+    </div>
+		
+		<div id="response"> </div>
+		
+	</body>
+	<table id="${jvar_name}" class="cms_layout_table_1_column" border="0" cellspacing="0" cellpadding="0" width="100%" height="100%">
+			<tr>
+			<td id="dropzone100" dropzone="true" class="cms_layout_content_footer" colspan="3" valign="bottom"/>
+		</tr>
+		</table>
+	
+
+</div>
+</div>
+
+</j:jelly>
