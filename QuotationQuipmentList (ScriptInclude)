@@ -1,0 +1,122 @@
+var PS_QuotationQuipmentList = Class.create();
+PS_QuotationQuipmentList.prototype = Object.extendsObject(AbstractAjaxProcessor, {
+
+	getEquipments: function(sla_num) {
+		
+		//var sla_num = '4807357';
+		var sla_ent = '';
+		var arrayUtil = new ArrayUtil();
+		var Days = gs.getProperty('sla.exp.para');
+		var Equipments = [];
+		var Prods = [];
+		
+		gs.info('Getting Equipment List for Quotation Renewal Notification on SLA '+sla_num);
+		var sla = new GlideRecord('u_sla_entitlements');
+		sla.addQuery('u_service_order', sla_num);
+		sla.query();
+		if (sla.next()) { 
+			sla_ent = sla.sys_id; 
+		}
+
+
+		Equipments.push(["Serial Number", "Description", "Product", "EOS"]);
+
+		var chassis = new GlideRecord('u_cmdb_ci_chassis');
+		chassis.addQuery('u_service_order', sla_ent);
+		chassis.query();
+		gs.info(chassis.getRowCount());
+		while (chassis.next()) {
+
+			var Product = chassis.getDisplayValue('u_product_name.u_product_package');
+			Prods.push(chassis.getDisplayValue('u_product_name.u_product_package'));
+			var EOS_Prod = new GlideRecord('u_product_package');
+			EOS_Prod.addQuery('u_name', Product);
+			EOS_Prod.addNotNullQuery('u_end_of_support');
+			EOS_Prod.addQuery('u_end_of_support', '<=', gs.daysAgo(Days));
+			EOS_Prod.query();
+			var res = EOS_Prod.next();
+			if (res) {
+				Equipments.push([(chassis.serial_number).toString(), (chassis.getDisplayValue('u_product_name.u_product_package')).toString(), (chassis.u_product_name.getDisplayValue()).toString(), "<h4>*</h4>"]);
+			}
+			if (!res) {
+				Equipments.push([(chassis.serial_number).toString(), (chassis.getDisplayValue('u_product_name.u_product_package')).toString(), (chassis.u_product_name.getDisplayValue()).toString(), "-"]);
+			}
+		}
+
+		var modules = new GlideRecord('u_cmdb_ci_module');
+		modules.addQuery('u_service_order', sla_ent);
+		modules.query();
+		while (modules.next()) {
+			var Product1 = modules.getDisplayValue('u_product_name.u_product_package');
+			Prods.push(modules.getDisplayValue('u_product_name.u_product_package'));
+			var EOS_Prod1 = new GlideRecord('u_product_package');
+			EOS_Prod1.addQuery('u_name', Product1);
+			EOS_Prod1.addNotNullQuery('u_end_of_support');
+			EOS_Prod1.addQuery('u_end_of_support', '<=', gs.daysAgo(Days));
+			EOS_Prod1.query();
+			var res1 = EOS_Prod1.next();
+			if (res1) {
+				Equipments.push([(modules.serial_number).toString(), (modules.getDisplayValue('u_product_name.u_product_package')).toString(), (modules.u_product_name.getDisplayValue()).toString(), "<h4>*</h4>"]);
+			}
+			if (!res1) {
+				Equipments.push([(modules.serial_number).toString(), (modules.getDisplayValue('u_product_name.u_product_package')).toString(), (modules.u_product_name.getDisplayValue()).toString(), "-"]);
+			}
+		}
+
+
+		var swcis = new GlideRecord('u_cmdb_software_ci');
+		swcis.addQuery('u_service_order', sla_ent);
+		swcis.query();
+		while (swcis.next()) {
+			var Product2 = swcis.getDisplayValue('u_product_name.u_product_package');
+			Prods.push(swcis.getDisplayValue('u_product_name.u_product_package'));
+			var EOS_Prod2 = new GlideRecord('u_product_package');
+			EOS_Prod2.addQuery('u_name', Product2);
+			EOS_Prod2.addNotNullQuery('u_end_of_support');
+			EOS_Prod2.addQuery('u_end_of_support', '<=', gs.daysAgo(Days));
+			EOS_Prod2.query();
+			var res2 = EOS_Prod2.next();
+			if (res2) {
+				Equipments.push([(swcis.serial_number).toString(), (swcis.getDisplayValue('u_product_name.u_product_package')).toString(), (swcis.u_product_name.getDisplayValue()).toString(), "<h4>*</h4>"]);
+			}
+			if (!res2) {
+				Equipments.push([(swcis.serial_number).toString(), (swcis.getDisplayValue('u_product_name.u_product_package')).toString(), (swcis.u_product_name.getDisplayValue()).toString(), "-"]);
+			}
+		}
+
+
+		gs.info("Equipments for SLA "+sla_num+" :: "+Equipments);
+
+		var Table = '';
+
+		function makeTableHTML(myArray) {
+			var result = "<table border=1; Style=' height: 100%; width: 100%';>";
+			for(var i=0; i<myArray.length; i++) {
+				if(i == 0){
+					result += "<tr>";
+					for(var j=0; j<myArray[i].length; j++){
+						result += "<th>"+myArray[i][j]+"</th>";
+					}
+					result += "</tr>";
+				}
+				if(i != 0){
+					result += "<tr>";
+					for(var j=0; j<myArray[i].length; j++){
+						result += "<td>"+myArray[i][j]+"</td>";
+					}
+					result += "</tr>";
+				}
+			}
+			result += "</table>";
+
+			return result;
+		}
+
+		Table = makeTableHTML(Equipments);
+
+		
+		return Table;
+	},
+	
+    type: 'PS_QuotationQuipmentList'
+});
