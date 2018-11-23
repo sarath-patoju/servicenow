@@ -1,0 +1,218 @@
+/* ###############################################
+The purpose of this script is to generate opportunities for expiring SLA Entitlements and Auto renewing the Opportunitites.
+############################################### */
+
+// System Property for defining the days
+var Days = gs.getProperty('sla.exp.para');
+var Today_Date = gs.now();
+var arrayUtil = new ArrayUtil();
+
+// Glide Object for Opportunities
+var opp = new GlideRecord('u_opportunities');
+opp.initialize();
+
+//Glide Object for SLA Offerings which are having FAP Codes only
+var sla_off = new GlideRecord("u_sla_offering");
+sla_off.addNotNullQuery('u_fap_code');
+sla_off.query();
+while(sla_off.next()){
+	
+
+	// Glide Object for SLA Entitlements
+	var sla_ent = new GlideRecord('u_sla_entitlements');
+	sla_ent.addQuery("u_sla_offering",sla_off.sys_id);
+	sla_ent.addQuery("u_status", "Active");
+	sla_ent.addQuery("u_expiry_date", "<=", gs.daysAgo(Days));
+	//sla_ent.addQuery("u_renewal", "true");
+	sla_ent.query();
+	while (sla_ent.next()) {
+		// Glide Object for Opportunities table to avoid duplication	
+		var opp1 = new GlideRecord('u_opportunities');
+		opp1.addQuery("u_opp_origin_ent", sla_ent.u_service_order);
+		opp1.query();
+		var found = false;
+		if (opp1.next()) {
+			found = true;
+		}
+		if (found == false) {
+			gs.log("###### Inserting records based on conditions from SLA Entitlements ######");
+			gs.log("Origin ENT : "+sla_ent.u_service_order);
+			opp.u_created_date = Today_Date;
+			opp.u_opp_send_to_mcrm = true;
+			opp.u_opp_origin_svc_order_description = sla_ent.u_service_order_description;
+			opp.u_opp_origin_offering = sla_ent.u_sla_offering.getDisplayValue();
+			opp.u_opp_origin_ent = sla_ent.u_service_order;
+			opp.u_opp_origin_price = sla_ent.u_svo_price;
+			opp.u_opp_origin_currency = sla_ent.u_svo_currency;
+			opp.u_opp_origin_start = sla_ent.u_start_date;
+			opp.u_opp_origin_expiry = sla_ent.u_expiry_date;
+			opp.u_opp_origin_equip_purchase_price = sla_ent.u_svo_price;
+			opp.u_opp_company = sla_ent.u_company.getDisplayValue();
+			opp.u_opp_location = sla_ent.u_location.getDisplayValue();
+			opp.u_opp_region = sla_ent.u_region;
+			opp.u_opp_origin_models = sla_ent.u_model.getDisplayValue();
+			opp.u_opp_opp_price = sla_ent.u_svo_price;
+			opp.u_opp_opp_offering = sla_off.u_fap_code;
+			opp.u_opp_opp_equip_purchase_price = sla_ent.u_svo_price;
+			opp.u_opp_opp_start_date = sla_ent.u_expiry_date;
+			
+			var date0 = new GlideDate();
+			date0.setDisplayValue(sla_ent.u_expiry_date);
+			date0.addDays(365);
+			opp.u_opp_opp_end_date = date0.getDisplayValue();
+			opp.u_opp_opp_svc_order_description = "Revision Start:" + sla_ent.u_expiry_date + " End:" + date0.getDisplayValue() + " " + sla_ent.u_service_order_description;
+			
+			//Updating mCRM Customer ID & Name
+			var company = new GlideRecord('core_company');
+			company.addQuery('sys_id', sla_ent.u_company);
+			company.query();
+			if(company.next()){
+				opp.u_opp_mcrm_customer_id = company.u_mcrm_customer_id;
+				opp.u_opp_mcrm_customer_name = company.u_mcrm_customer_name;
+			}
+
+			// Checking for Products in Chassis, Modules & SoftwareCI's based on SLA Order 
+			var Products = [];
+			var chassis = new GlideRecord('u_cmdb_ci_chassis');
+			chassis.addQuery('u_service_order', sla_ent.sys_id);
+			chassis.query();
+			while (chassis.next()) {
+				Products.push(chassis.getDisplayValue('u_product_name.u_product_package'));
+			}
+
+			var modules = new GlideRecord('u_cmdb_ci_module');
+			modules.addQuery('u_service_order', sla_ent.sys_id);
+			modules.query();
+			while (modules.next()) {
+				Products.push(modules.getDisplayValue('u_product_name.u_product_package'));
+			}
+
+			var swcis = new GlideRecord('u_cmdb_software_ci');
+			swcis.addQuery('u_service_order', sla_ent.sys_id);
+			swcis.query();
+			while (swcis.next()) {
+				Products.push(swcis.getDisplayValue('u_product_name.u_product_package'));
+			}
+
+			// Checking for End of Support Products falling with in 90 Days from today
+			if (Products) {
+				var Products_List = [];
+				gs.info("Support Order :"+sla_ent.u_service_order+" Products "+Products);
+				Products_List = arrayUtil.unique(Products);
+				gs.info("Support Order :"+sla_ent.u_service_order+" Unique Products "+Products_List);
+
+				var EOS_Products = [];
+				for (var i = 0; i < Products_List.length; i++) {
+					var EOS_Prod = new GlideRecord('u_product_package');
+					EOS_Prod.addQuery('u_name', Products_List[i]);
+					EOS_Prod.addNotNullQuery('u_end_of_support');
+					EOS_Prod.addQuery('u_end_of_support', '<=', gs.daysAgo(Days));
+					EOS_Prod.query();
+					if (EOS_Prod.next()) {
+						gs.info("Support Order :"+sla_ent.u_service_order+" Product Package " + Products_List[i] + " - End Of Support " + EOS_Prod.u_end_of_support);
+						EOS_Products.push(Products_List[i]);
+					}
+				}
+				if (EOS_Products) {
+					gs.info("Support Order :"+sla_ent.u_service_order+" has End Of Support Equipments, Total : " + EOS_Products.length);
+					EOS_Products = EOS_Products.join(',');
+					opp.u_eos_during_opp_ext = EOS_Products;
+				}
+				if(!EOS_Products){
+					gs.info("Support Order :"+sla_ent.u_service_order+" has NO EOS Equipments");
+					opp.u_eos_during_opp_ext = '';
+				}
+			}
+
+			if(!Products){
+				gs.info("Support Order :"+sla_ent.u_service_order+" has NO Equipments");
+				opp.u_eos_during_opp_ext = '';
+			}
+
+			opp.insert();
+			gs.info("Generating Opportunity : " + opp.u_number);
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Updating Opportunities table from Auto Renewals table
+
+var autoren = new GlideRecord('u_auto_renewal');
+autoren.query();
+while (autoren.next()) {
+    var start_date = '';
+    var end_date = '';
+    var opp2 = new GlideRecord('u_opportunities');
+    opp2.addQuery("u_opp_company", autoren.u_auto_customer.getDisplayValue());
+    opp2.addQuery("u_opp_origin_offering", autoren.u_auto_sla_offering.getDisplayValue());
+    opp2.query();
+    var found_opp2 = false;
+    while (opp2.next()) {
+        //Update data according to Auto Renewals Table data
+        gs.log("###### Updating Renewals based on Auto Renewals Table ######");
+        gs.log("Company : " + autoren.u_auto_customer.getDisplayValue() + " Origin ENT : " + opp2.u_opp_origin_ent);
+        var date = new GlideDate();
+        date.setDisplayValue(opp2.u_opp_origin_expiry);
+        start_date = date.getDisplayValue();
+        opp2.u_opp_opp_start_date = start_date;
+        if (autoren.u_auto_renewal_duration == '') {
+            date.addDays(365);
+            end_date = date.getDisplayValue();
+            opp2.u_opp_opp_end_date = end_date;
+        }
+        else {
+            var renduration = Math.round(parseFloat(autoren.u_auto_renewal_duration) * 365);
+            date.addDays(renduration);
+            end_date = date.getDisplayValue();
+            opp2.u_opp_opp_end_date = end_date;
+        }
+        var x = (parseInt(opp2.u_opp_origin_price) * parseInt(autoren.u_auto_renewal_offering)) / 100;
+        opp2.u_opp_opp_price = parseInt(opp2.u_opp_origin_price) + parseInt(x);
+        opp2.u_opp_opp_offering = autoren.u_auto_sla_offering.u_fap_code;
+        opp2.u_opp_opp_equip_purchase_price = opp2.u_opp_origin_price;
+        opp2.u_opp_opp_currency = opp2.u_opp_origin_currency;
+        opp2.u_opp_opp_equip_count = opp2.u_opp_origin_equip_count;
+        opp2.u_opp_opp_svc_order_description = "Revision " + start_date + " " + end_date + " " + opp2.u_opp_origin_svc_order_description;
+        opp2.update();
+    }
+}
+var autoren1 = new GlideRecord('u_auto_renewal');
+autoren1.addQuery("u_auto_customer", '');
+autoren1.query();
+while (autoren1.next()) {
+    var start_date1 = '';
+    var end_date1 = '';
+    var opp3 = new GlideRecord('u_opportunities');
+    opp3.addQuery("u_opp_origin_offering", autoren1.u_auto_sla_offering.getDisplayValue());
+    opp3.query();
+    var found_opp3 = false;
+    while (opp3.next()) {
+        //Update data according to default Renewal Percentage
+        gs.log("###### Updating Renewals based on Default Renewal Table ######");
+        gs.log("SLA Offering : " + autoren1.u_auto_sla_offering.getDisplayValue() + " Origin ENT : " + opp3.u_opp_origin_ent);
+        var date = new GlideDate();
+        date.setDisplayValue(opp3.u_opp_origin_expiry);
+        start_date1 = date.getDisplayValue();
+        opp3.u_opp_opp_start_date = start_date1;
+        if (autoren.u_auto_renewal_duration == '') {
+            date.addDays(365);
+            end_date1 = date.getDisplayValue();
+            opp3.u_opp_opp_end_date = end_date1;
+        }
+        else {
+            var renduration = Math.round(parseFloat(autoren.u_auto_renewal_duration) * 365);
+            date.addDays(renduration);
+            end_date1 = date.getDisplayValue();
+            opp3.u_opp_opp_end_date = end_date1;
+        }
+        var y = (parseInt(opp3.u_opp_origin_price) * parseInt(autoren1.u_auto_renewal_offering)) / 100;
+        opp3.u_opp_opp_price = parseInt(opp3.u_opp_origin_price) + parseInt(y);
+        opp3.u_opp_opp_offering = autoren1.u_auto_sla_offering.u_fap_code;
+        opp3.u_opp_opp_equip_purchase_price = opp3.u_opp_origin_price;
+        opp3.u_opp_opp_currency = opp3.u_opp_origin_currency;
+        opp3.u_opp_opp_equip_count = opp3.u_opp_origin_equip_count;
+        opp3.u_opp_opp_svc_order_description = "Revision Start:" + start_date1 + " End:" + end_date1 + " " + opp3.u_opp_origin_svc_order_description;
+        opp3.update();
+    }
+}
