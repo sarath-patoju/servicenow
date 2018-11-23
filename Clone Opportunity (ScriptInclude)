@@ -1,0 +1,184 @@
+var PS_Opp_Clone = Class.create();
+PS_Opp_Clone.prototype = Object.extendsObject(AbstractAjaxProcessor, {
+
+	Clone: function(){
+	
+	gs.info("****** STARTED - PS_Opp_Clone ******");
+		
+	var arrayUtility = new ArrayUtil();
+	var Today_Date = gs.now();
+	var OPP_TABLE = 'u_opportunities';
+	var src_sysid = this.getParameter('sysparm_src_sysid');
+	var OPP_NUM = this.getParameter('sysparm_oppnum');
+	var currentRecs = (this.getParameter('sysparm_current_recs')).split(",");
+	var new_sysurl = '';
+	var new_sysid = '';
+	var Final_OPP_NUM = '';
+	var OPP_Numbers = [];	
+	
+	var Hyphen = OPP_NUM.includes('-');
+	var SplitOppNum = OPP_NUM.split('-');
+	var Clone_Char = 'A';
+	var Clone_Num = '1';
+		
+	var new_rec = '';
+	var Rec_Check = '';
+	
+	gs.info("PS_Opp_Clone ScriptInclude Started for Opportunity "+OPP_NUM);
+	
+	var Opportunity_Recs = new GlideRecord(OPP_TABLE);
+	Opportunity_Recs.query();
+	while(Opportunity_Recs.next()){
+	  OPP_Numbers += Opportunity_Recs.u_number+",";
+	}
+	OPP_Numbers = OPP_Numbers.split(',');
+	gs.info("***Step0 : Retrieved Opportunities : "+OPP_Numbers.length);
+
+	if(Hyphen){
+		if(SplitOppNum.length == 2){
+		gs.info("***Step1 : Opp Number has 1 Hyphen");
+		if(arrayUtility.contains(OPP_Numbers, OPP_NUM)){
+			Clone_Char = String.fromCharCode(SplitOppNum[1].charCodeAt() + 1);
+			var x1 = SplitOppNum[0]+'-'+Clone_Char;
+			if(arrayUtility.contains(OPP_Numbers, x1)){
+				var x2 = OPP_NUM+'-'+Clone_Num;
+				if(!arrayUtility.contains(OPP_Numbers, x2)){
+					Final_OPP_NUM = x2;
+				}
+				if(arrayUtility.contains(OPP_Numbers, x2)){
+					gs.info("***Step1_1 : In Do While loop");
+					var GotIt1 = 1;
+					var y1 = x2;
+					do {
+						y1 = y1.split('-');
+						Clone_Num = String.fromCharCode(y1[2].charCodeAt() + 1);
+						y1 = y1[0]+'-'+y1[1]+'-'+Clone_Num;
+						if(!arrayUtility.contains(OPP_Numbers, y1)){
+							Final_OPP_NUM = y1;
+							GotIt1 = 0;
+							break;
+						}
+						gs.info("***GotIt1 "+GotIt1+" Number "+y1);
+					}
+					while(GotIt1 == 1);
+				}
+			}
+			if(!arrayUtility.contains(OPP_Numbers, x1)){
+				Final_OPP_NUM = x1;
+			}
+		}
+
+		if(!arrayUtility.contains(OPP_Numbers, OPP_NUM)){
+			var z1 = OPP_NUM.split('-');
+			Clone_Char = String.fromCharCode(z1[1].charCodeAt() + 1);
+			Final_OPP_NUM = z1[0]+'-'+Clone_Char;
+		}
+	}
+	
+	if(SplitOppNum.length == 3){
+		gs.info("***Step1 : Opp Number has 2 Hyphen's");
+		if(arrayUtility.contains(OPP_Numbers, OPP_NUM)){
+			Clone_Num = String.fromCharCode(SplitOppNum[2].charCodeAt() + 1);
+			var a1 = SplitOppNum[0]+'-'+SplitOppNum[1]+'-'+Clone_Num;
+			if(!arrayUtility.contains(OPP_Numbers, a1)){
+				Final_OPP_NUM = a1;
+			}
+			if(arrayUtility.contains(OPP_Numbers, a1)){
+				gs.info("***Step1_1 : In Do While loop");
+				var GotIt2 = 1;
+				var b1 = a1;
+				do {
+					b1 = b1.split('-');
+					Clone_Num = String.fromCharCode(b1[2].charCodeAt() + 1);
+					b1 = b1[0]+'-'+b1[1]+'-'+Clone_Num;
+					if(!arrayUtility.contains(OPP_Numbers, b1)){
+						Final_OPP_NUM = b1;
+						GotIt2 = 0;
+						break;
+					}
+					gs.info("***GotIt2 "+GotIt2+" Number "+b1);
+				}
+				while(GotIt2 == 1);
+			}
+		}
+	}
+	}
+
+	if(!Hyphen){
+		gs.info("***Step1 : Opp Number has 0 Hyphen's");
+		OPP_NUM = OPP_NUM+'-'+Clone_Char;
+		if(!arrayUtility.contains(OPP_Numbers, OPP_NUM)){
+			Final_OPP_NUM = OPP_NUM;
+		}
+		if(arrayUtility.contains(OPP_Numbers, OPP_NUM)){
+			gs.info("***Step1_1 : In Do While loop");
+			var GotIt3 = 1;
+			var m1 = OPP_NUM;
+			do {
+				m1 = m1.split('-');
+				Clone_Char = String.fromCharCode(m1[1].charCodeAt() + 1);
+				m1 = m1[0]+'-'+Clone_Char;
+				if(!arrayUtility.contains(OPP_Numbers, m1)){
+					Final_OPP_NUM = m1;
+					GotIt3 = 0;
+					break;
+				}
+				gs.info("***GotIt3 "+GotIt3+" Number "+m1);
+			}
+			while(GotIt3 == 1);
+		}
+	}
+	gs.info("Final Opp Num : "+Final_OPP_NUM+" is generated for "+this.getParameter('sysparm_oppnum'));
+	
+	
+	new_rec = new GlideRecord(OPP_TABLE);
+	new_rec.initialize();
+	new_rec.u_number = Final_OPP_NUM;
+	new_sysid = new_rec.insert();
+	
+	
+	var src = new GlideRecord(OPP_TABLE);
+	src.addQuery('sys_id',src_sysid);
+	src.query();
+	if (src.next()){
+		var new_rec1 = new GlideRecord(OPP_TABLE);
+		new_rec1.initialize();
+		new_rec1.addQuery('sys_id',new_sysid);
+		new_rec1.query();
+		if (new_rec1.next()){
+			new_rec1.u_opp_origin_ent = src.u_opp_origin_ent;
+			new_rec1.u_opp_origin_equip_count = src.u_opp_origin_equip_count;
+			new_rec1.u_opp_origin_equip_purchase_price = src.u_opp_origin_equip_purchase_price;
+			new_rec1.u_opp_origin_expiry = src.u_opp_origin_expiry;
+			new_rec1.u_opp_origin_offering = src.u_opp_origin_offering;
+			new_rec1.u_opp_origin_precedent_ent = src.u_opp_origin_precedent_ent;
+			new_rec1.u_opp_origin_price = src.u_opp_origin_price;
+			new_rec1.u_opp_origin_sales_order_number = src.u_opp_origin_sales_order_number;
+			new_rec1.u_opp_origin_start = src.u_opp_origin_start;
+			new_rec1.u_opp_origin_svc_order_description = src.u_opp_origin_svc_order_description;
+			new_rec1.u_opp_region = src.u_opp_region;
+			new_rec1.u_opp_company = src.u_opp_company;
+			new_rec1.u_opp_location = src.u_opp_location;
+			new_rec1.u_opp_mcrm_customer_id = src.u_opp_mcrm_customer_id;
+			new_rec1.u_opp_mcrm_customer_name = src.u_opp_mcrm_customer_name;
+			new_rec1.u_opp_opp_offering = currentRecs[0];
+				var cur = (currentRecs[1]).split(';');
+			new_rec1.u_opp_opp_price.setValue(cur[0]+ ";" +cur[1]);
+			new_rec1.u_opp_opp_start_date.setValue(currentRecs[2]);
+			new_rec1.u_opp_opp_end_date.setValue(currentRecs[3]);
+			new_rec1.u_opp_opp_svc_order_description = currentRecs[4];
+				var cur1 = (currentRecs[5]).split(';');
+			new_rec1.u_opp_opp_equip_purchase_price.setValue(cur1[0]+ ";" +cur1[1]);
+			new_rec1.u_opp_opp_equip_count = currentRecs[6];
+			new_rec1.u_created_date = Today_Date;
+			new_sysurl = new_rec1.update();
+		}
+	}
+		var sn_instance = gs.getProperty('ericsson.servicenow.instance');
+		var uri = (sn_instance + '/' +OPP_TABLE+ '.do?sys_id=' +new_sysid);
+		
+		gs.info("****** ENDED - PS_Opp_Clone ******");
+		return uri;
+},
+    type: 'PS_Opp_Clone'
+});
