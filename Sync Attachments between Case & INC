@@ -1,0 +1,99 @@
+// <<<< 1 >>>>
+// After insert Business rule on sys_attachment, table_name is sn_customerservice_case as filter
+
+var recordId = current.table_sys_id;
+var fileName = current.file_name;
+var attId = current.sys_id;
+
+var incGr = new GlideRecord('incident');
+incGr.addQuery('parent', recordId);
+incGr.addActiveQuery();
+incGr.query();
+while (incGr.next()) {
+gs.log("Sync CASE: " + incGr.getDisplayValue('parent') + " attachment :" + fileName + " to INC: " + incGr.number, "Sync Attachments");
+new global.VNBaseUtils().copySpecificAttachment("sn_customerservice_case", recordId, "incident", incGr.sys_id, attId);
+}
+
+// <<<< 2 >>>>
+// After insert Business rule on sys_attachment, table_name is incident as filter
+
+var recordId = current.table_sys_id;
+    var fileName = current.file_name;
+    var attId = current.sys_id;
+
+    var incGr = new GlideRecord('incident');
+    incGr.get(recordId);
+    if (incGr.parent) {
+		//make sure its Case as Parent for Incident
+        var caseGr = new GlideRecord("sn_customerservice_case");
+        caseGr.addQuery("sys_id", incGr.parent);
+        caseGr.query();
+        if (caseGr.next()) {
+
+            gs.log("Sync INC: " + incGr.number + " attachment :" + fileName + " to CASE: " + incGr.getDisplayValue('parent'), "Sync Attachments");
+            new global.VNBaseUtils().copySpecificAttachment("incident", recordId, "sn_customerservice_case", incGr.parent, attId);
+        }
+    }
+
+// <<<< 3 >>>>
+// Script include functions 
+
+var VNBaseUtils = Class.create();
+VNBaseUtils.prototype = Object.extendsObject(AbstractAjaxProcessor, {
+copySpecificAttachment: function(donorTable, donorID, recipientTable, recipientID, fileID) {
+
+        var donorAttSysID,
+            grNewAttachment,
+            linkToNewRecord,
+            attDataRecord,
+            newDocRecord,
+            grAttachment = new GlideRecord('sys_attachment');
+        grAttachment.addQuery('table_name', donorTable);
+        grAttachment.addQuery('table_sys_id', donorID);
+        //grAttachment.addQuery('file_name', fileName);
+		grAttachment.addQuery('sys_id', fileID);
+        grAttachment.query();
+        if (grAttachment.next()) {
+            donorAttSysID = grAttachment.getValue('sys_id');
+            grNewAttachment = this.copyRecord(grAttachment);
+            grNewAttachment.setValue('table_name', recipientTable);
+            grNewAttachment.setValue('table_sys_id', recipientID);
+            grNewAttachment.update();
+            linkToNewRecord = gs.getProperty('glide.servlet.uri') + grNewAttachment.getLink();
+            attDataRecord = new GlideRecord('sys_attachment_doc');
+            attDataRecord.addQuery('sys_attachment', donorAttSysID);
+            attDataRecord.query();
+            if (attDataRecord.next()) {
+                newDocRecord = this.copyRecord(attDataRecord);
+                newDocRecord.setValue('sys_attachment', grNewAttachment.getValue('sys_id'));
+                newDocRecord.update();
+            }
+        }
+        //gs.print(linkToNewRecord);
+    },
+
+    copyRecord: function(record, runBRs) {
+		
+        var i,
+            recordElement,
+            recordElementName,
+            recordTable = record.getTableName(),
+            recordFields = record.getFields(),
+            grNewRecord = new GlideRecord(recordTable);
+
+        grNewRecord.initialize();
+
+        for (i = 0; i < recordFields.size(); i++) {
+            recordElement = recordFields.get(i);
+            if (recordElement.getName() != 'sys_id' && recordElement.getName() != 'number') {
+                recordElementName = recordElement.getName();
+                grNewRecord.setValue(recordElementName, record.getValue(recordElementName));
+            }
+        }
+        grNewRecord.setWorkflow(false); // Don't want to execute BR's Just to avoid loopback
+        grNewRecord.insert();
+        return grNewRecord;
+		
+    },
+    type: 'VNBaseUtils'
+});
