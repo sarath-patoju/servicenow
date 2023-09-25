@@ -1,0 +1,11 @@
+getAssetsByCompany: function(account){
+		var assets = [];
+		var gr = new GlideRecord("alm_asset");
+		gr.addQuery("account", account);
+		gr.query();
+		while (gr.next()) {
+			assets.push(gr.getUniqueValue());
+		}
+		
+		return 'sys_idIN'+assets.toString();
+},
