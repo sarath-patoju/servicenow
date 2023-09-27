@@ -4,7 +4,10 @@ Create a notification and send when an event is fired.
 */
 
 // Email Script Starts
-	
+(function runMailScript(/* GlideRecord */ current, /* TemplatePrinter */ template,
+          /* Optional EmailOutbound */ email, /* Optional GlideRecord */ email_action,
+          /* Optional GlideRecord */ event) {
+
 function checkIfNull(t) {
     if (t == '') {
         return '(empty)';
@@ -107,3 +110,5 @@ while (gd.next()) {
 template.print('</table>');
 template.print('</body>');
 template.print('</html>');
+
+})(current, template, email, email_action, event);
