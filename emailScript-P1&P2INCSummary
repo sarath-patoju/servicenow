@@ -1,0 +1,109 @@
+/* Trigger an event from a Scheduled Job every day.
+Make sure you are passing either user email or group email as a Param for the event.
+Create a notification and send when an event is fired.
+*/
+
+// Email Script Starts
+	
+function checkIfNull(t) {
+    if (t == '') {
+        return '(empty)';
+    } else {
+        return t;
+    }
+}
+
+var instanceURL = "https://" + gs.getProperty('instance_name') + ".service-now.com/";
+var incURL = instanceURL+"incident.do?sys_id=";
+
+var incNum, incSysId, incShortDesc, incAssGroup, incAssignedTo, incState;
+
+var gr = new GlideRecord("incident");
+gr.addQuery("priority", "1");
+gr.addActiveQuery();
+gr.query();
+
+template.print('<html>');
+template.print('<style>');
+template.print('.tab2 {tab-size: 4;}');
+template.print('</style>');
+template.print('</body>');
+template.print('Below is a list of active P1 and P2 incidents:');
+template.print('<br><br>');
+
+// Priority 1 incidents
+template.print('<b>Active Priority 1 Incidents</b>');
+template.print('<br>');
+template.print('<table>');
+template.print('<tr><th>Number</th><th>Short Description</th><th>Assignment Group</th><th>Assigned To</th><th>State</th></tr>');
+
+while (gr.next()) {
+    incNum = gr.number;
+    incSysId = gr.sys_id;
+    incShortDesc = gr.short_description;
+	incAssGroup = checkIfNull(gr.assignment_group.getDisplayValue());
+	incAssignedTo = checkIfNull(gr.assigned_to.getDisplayValue());
+    incState = gr.state.getDisplayValue();
+	
+    template.print('<tr><td><a href='+incURL);
+    template.print(incSysId);
+    template.print('>');
+    template.print(incNum);
+    template.print("</a></td>");
+    template.print('<td>');
+    template.print(incShortDesc);
+    template.print('</td><td>');
+    template.print(incAssGroup);
+    template.print('</td><td>');
+    template.print(incAssignedTo);
+    template.print('</td><td>');
+    template.print(incState);
+    template.print('</td>');
+}
+
+template.print('</table>');
+template.print('<br>');
+
+
+// Priority 2 incidents
+template.print('<b>Active Priority 2 Incidents</b>');
+template.print('<br>');
+template.print('<table>');
+template.print('<tr><th>Number</th><th>Short Description</th><th>Assignment Group</th><th>Assigned To<th><th>State</th</tr>');
+
+var gd = new GlideRecord("incident");
+gd.addQuery("priority", "2");
+gd.addActiveQuery();
+gd.query();
+
+incNum = '', incSysId = '', incShortDesc = '', incAssGroup = '', incAssignedTo = '', incState = '';
+
+while (gd.next()) {
+	incNum = gd.number;
+    incSysId = gd.sys_id;
+    incShortDesc = gd.short_description;
+	incAssGroup = checkIfNull(gd.assignment_group.getDisplayValue());
+	incAssignedTo = checkIfNull(gd.assigned_to.getDisplayValue());
+    incState = gd.state.getDisplayValue();
+	
+    template.print('<tr>');
+    template.print('<tr><td><a href='+incURL);
+    template.print(incSysId);
+    template.print('>');
+    template.print(incNum);
+    template.print("</a>");
+    template.print('</td><td>');
+    template.print(incShortDesc);
+    template.print('</td><td>');
+    template.print(incAssGroup);
+    template.print('</td><td>');
+    template.print(incAssignedTo);
+    template.print('</td><td>');
+    template.print(incState);
+    template.print('</td>');
+    template.print('</tr>');
+}
+
+template.print('</table>');
+template.print('</body>');
+template.print('</html>');
