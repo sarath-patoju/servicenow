@@ -1,0 +1,79 @@
+// Copy record from a different instance
+// You need a REST Message configured with Credentials inside it
+// Two scripts are provide here 1) Script Include 2) Fix script
+
+///////////////////////////// SCRIPT INCLUDE ////////////////////////////////////////////////////
+
+var SPcopyRecords = Class.create();
+SPcopyRecords.prototype = {
+    initialize: function() {},
+
+    copyRecords: function(sourceInstance, tableName, query) {
+        var debugLog = '';
+        var skippedRecords = '';
+        var skippedRecordsCount = 0;
+        var createdRecords = '';
+        var createdRecordsCount = 0;
+        debugLog += "\nSource Instance: " + sourceInstance + "\nTable Name: " + tableName + "\nQuery: " + query + "\n";
+
+        var response = this.getData(sourceInstance, tableName, query);
+        var responseBody = response.getBody();
+        var jsonPayload = JSON.parse(responseBody);
+        var httpStatus = response.getStatusCode();
+
+        debugLog += "HTTPStatus: " + httpStatus + "\n";
+
+        if (httpStatus == 200) {
+            var headers = response.getHeaders();
+            var rowCount = headers['X-Total-Count'];
+            debugLog += "Fetched Records: " + rowCount + "\n";
+
+            for (var i = 0; i < rowCount; i++) {
+                var grTable = new GlideRecord(tableName);
+				var obj = jsonPayload.result[i];
+                grTable.get(obj.sys_id);
+                if (!grTable.isValid()) {
+                    grTable.initialize();
+                    for (var j in obj) {
+						var field = j;
+						var value = obj[j] + '';
+						if(typeof obj[j] == "object")
+							value = obj[j].value + '';
+                        grTable[field] = value;
+                    }
+                    grTable.insert();
+                    createdRecordsCount++;
+                } else {
+                    skippedRecords += obj.sys_id + ",";
+                    skippedRecordsCount++;
+                }
+            }
+            debugLog += "Created Records: " + createdRecordsCount + "\nSkipped Records: " + skippedRecords + "\nSkipped Records Count: " + skippedRecordsCount;
+        }
+        gs.log(debugLog, "copyRecords");
+        return debugLog;
+    },
+
+    getData: function(sourceInstance, tableName, query) {
+        try {
+            var r = new sn_ws.RESTMessageV2('SP - copyRecords', 'GetRecords');
+            r.setStringParameterNoEscape('source_instance', sourceInstance);
+            r.setStringParameterNoEscape('table_name', tableName);
+            r.setStringParameterNoEscape('query', query);
+            var response = r.execute();
+        } catch (ex) {
+            var message = ex.message;
+        }
+        return response;
+    },
+
+    type: 'SPcopyRecords'
+};
+
+
+////////////////////////////// FIX SCRIPT ////////////////////////////////////////////////////////
+var sourceInstance = "dev65954";
+var tableName = "alm_asset";
+var query = "account=faa6fa36479a1550281e0921e36d437c";
+
+new global.SPcopyRecords().copyRecords(sourceInstance, tableName, query);
