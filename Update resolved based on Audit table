@@ -1,0 +1,30 @@
+var list = new GlideRecord("incident");
+list.addEncodedQuery("state=6^resolved_by=NULL");
+
+list.query();
+while (list.next()){
+    gs.info(list.getDisplayValue());
+    var auditGr = new GlideRecord("sys_audit");
+    auditGr.addEncodedQuery("fieldname=state^documentkeySTARTSWITH"+list.getUniqueValue()+"^newvalue=6");
+    auditGr.query();
+    while (auditGr.next()){
+        gs.info("Resolved by: "+auditGr.user);
+        gs.info("Resolved at: "+auditGr.sys_created_on);
+    }
+
+    list.autoSysFields(false);
+    list.setWorkflow(false);
+    list.incident_state = list.state;
+    list.resolved_by = getUser(auditGr.user);
+    list.resolved_at = auditGr.sys_created_on;
+    list.update();
+}
+
+function getUser(u){
+    var gr = new GlideRecord('sys_user');
+    gr.addQuery('user_name', u);
+    gr.query();
+    if(gr.next()){
+        return gr.getUniqueValue();
+    }
+}
