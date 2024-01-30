@@ -1,0 +1,73 @@
+var org_alias = "245677b6-432a-b2d8-ed3abab747e1";
+var token = "9238e77d27330b140874923f395fd";
+var base64_key = "MZkCdTgvDMkCx3ovzC+gyQROYPDmpS4W093qlQdA=";
+var user_name = "A0537123";
+
+var gdt = new GlideDateTime();
+var gd = gdt.getDate();
+var gt = gdt.getTime();
+
+var dateString = gd.getByFormat("yyyy-MM-dd");
+var timeString = gt.getByFormat("HH:mm:ss");
+var milliseconds = gt.getByFormat("ms").slice(0, 3);
+
+var dateTimeString = dateString + " " + timeString + "." + milliseconds;
+
+// Token Header
+var tokenHeader = {
+    "alg": "HS256",
+    "org_alias": org_alias,
+    "token": token
+};
+
+// Token Payload
+var tokenPayload = {
+    "reqHeader": {
+        "locale": "en",
+        "orgAlias": org_alias,
+        "secretKey": token,
+        "timestamp": dateTimeString,
+        "version": "4.9"
+    },
+    "reqBody": {
+        "getSameDeviceUsers": false,
+        "userName": user_name,
+        "clientData": "Session data echoed back to the requestor"
+    }
+};
+
+function base64Object(input){
+    var inputWords = CryptoJS.enc.Utf8.parse(JSON.stringify(input));
+	var base64 = CryptoJS.enc.Base64.stringify(inputWords);
+	return base64;
+}
+
+var CryptoJS = new x_158350_amazonuti.CryptoJS().CryptoJS;
+
+// Token Signature
+var signedData = base64Object(tokenHeader) + "." + base64Object(tokenPayload);
+var base64_key_encoded = CryptoJS.enc.Base64.parse(base64_key);
+var signatureHash = CryptoJS.HmacSHA256(signedData, base64_key_encoded);
+var signature = CryptoJS.enc.Base64.stringify(signatureHash);
+var requestJWSToken = signedData + "." + signature;
+
+gs.info(requestJWSToken);
+
+try {
+    var r = new sn_ws.RESTMessageV2('PingID', 'getuserdetails');
+    r.setStringParameterNoEscape('jws', requestJWSToken);
+    var response = r.execute();
+    var responseBody = response.getBody();
+    var httpStatus = response.getStatusCode();
+	gs.info("httpStatus "+httpStatus);
+
+    if(httpStatus == 200){
+        var responsePayload = responseBody.split('.')[1];
+        var responsePayloadParsed = CryptoJS.enc.Base64.parse(responsePayload);
+        var responseJson = JSON.parse(responsePayloadParsed.toString(CryptoJS.enc.Utf8));
+        gs.info("Response "+JSON.stringify(responseJson));
+    }
+
+} catch (ex) {
+    var message = ex.message;
+}
